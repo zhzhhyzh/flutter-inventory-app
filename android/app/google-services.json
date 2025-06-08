@@ -1,0 +1,30 @@
+{
+  "project_info": {
+    "project_number": "242613738229",
+    "firebase_url": "https://reminder-yeepeng-default-rtdb.firebaseio.com",
+    "project_id": "reminder-yeepeng",
+    "storage_bucket": "reminder-yeepeng.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:242613738229:android:34cc75998a01b6b87943bc",
+        "android_client_info": {
+          "package_name": "com.example.inventory_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAnMK-xLOUOJXO5LRytn8ENrdJ56bDdHvE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
