@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
-import 'package:firebase_database/firebase_database.dart' as rtdb;
 
 class CatalogPage extends StatefulWidget {
   @override
@@ -16,6 +15,7 @@ class _CatalogPageState extends State<CatalogPage> {
   DocumentSnapshot? lastDocument;
   final int batchSize = 20;
   final ScrollController _scrollController = ScrollController();
+  bool sortByExpiry = false;
 
   @override
   void initState() {
@@ -32,15 +32,28 @@ class _CatalogPageState extends State<CatalogPage> {
     }
   }
 
-  Future<void> _loadItems() async {
+  Future<void> _loadItems({bool reset = false}) async {
     if (isLoading || !hasMore) return;
-    setState(() => isLoading = true);
+
+    setState(() {
+      isLoading = true;
+      if (reset) {
+        _products.clear();
+        lastDocument = null;
+        hasMore = true;
+      }
+    });
 
     try {
       Query query = FirebaseFirestore.instance
           .collection('inventory')
-          .orderBy('brand')
           .limit(batchSize);
+
+      if (sortByExpiry) {
+        query = query.orderBy('expiryDate');
+      } else {
+        query = query.orderBy('brand');
+      }
 
       if (lastDocument != null) {
         query = query.startAfterDocument(lastDocument!);
@@ -51,9 +64,8 @@ class _CatalogPageState extends State<CatalogPage> {
       if (snapshot.docs.isNotEmpty) {
         lastDocument = snapshot.docs.last;
 
-        final List<Map<String, dynamic>> items = snapshot.docs.map((doc) {
+        final items = snapshot.docs.map((doc) {
           final item = doc.data() as Map<String, dynamic>;
-
           item['imageUrl'] = item['imageUrl']?.toString() ?? '';
 
           if (item.containsKey('expiryDate') && item['expiryDate'] is Timestamp) {
@@ -64,6 +76,12 @@ class _CatalogPageState extends State<CatalogPage> {
           }
 
           return item;
+        }).where((item) {
+          if (sortByExpiry) {
+            final expiry = DateTime.tryParse(item['expiryDate'] ?? '');
+            return expiry != null && expiry.isAfter(DateTime.now());
+          }
+          return true;
         }).toList();
 
         setState(() => _products.addAll(items));
@@ -73,7 +91,7 @@ class _CatalogPageState extends State<CatalogPage> {
         hasMore = false;
       }
     } catch (e) {
-      print('Error fetching paginated data: $e');
+      print('Error fetching data: $e');
     }
 
     setState(() => isLoading = false);
@@ -89,7 +107,25 @@ class _CatalogPageState extends State<CatalogPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('Catalog')),
+      appBar: AppBar(
+        title: Text('Catalog'),
+        actions: [
+          Row(
+            children: [
+              Text('Sort by Expiry'),
+              Switch(
+                value: sortByExpiry,
+                onChanged: (val) {
+                  setState(() {
+                    sortByExpiry = val;
+                  });
+                  _loadItems(reset: true);
+                },
+              ),
+            ],
+          ),
+        ],
+      ),
       body: _products.isEmpty && isLoading
           ? Center(child: CircularProgressIndicator())
           : GridView.builder(
@@ -132,6 +168,7 @@ class _CatalogPageState extends State<CatalogPage> {
                     style: TextStyle(fontWeight: FontWeight.bold),
                   ),
                   Text(_calculateCountdown(expiryDate)),
+
                 ],
               ),
             ),
